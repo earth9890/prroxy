@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:orientation="vertical"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/connection_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#A2F34c"
+        android:text="Connection Status"
+
+        android:textAlignment="center"
+        android:textColor="@color/black" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="40dp"
+        android:orientation="horizontal">
+
+     <Button
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         android:id="@+id/switch1"
+         android:layout_marginLeft="20dp"
+         android:text="On/Off"/>
+
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/buttonDiscover"
+            android:layout_marginLeft="40dp"
+            android:background="@color/teal_200"
+            android:text="DISCOVER"/>
+    </LinearLayout>
+
+    <ListView
+        android:layout_width="match_parent"
+        android:layout_height="253dp"
+        android:id="@+id/listView"
+        android:layout_marginTop="40dp"
+        android:background="@color/purple_200" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/messageTextView"
+        android:layout_marginTop="40dp"
+        android:text="Message"
+        android:textAlignment="center"/>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <EditText
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:id="@+id/editTextTypeMsg"
+            android:inputType="textPersonName"
+            android:text="Name"
+            app:layout_constraintBaseline_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/sendButton"
+            app:layout_constraintStart_toStartOf="parent"
+            />
+        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/sendButton"
+            app:layout_constraintBottom_toBottomOf="@+id/editTextTypeMsg"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:src="@drawable/download"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+
+</LinearLayout>
