@@ -1,6 +1,7 @@
 package com.example.prroxy;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.net.wifi.p2p.WifiP2pManager.*;
 
 import android.Manifest;
 import android.app.Activity;
@@ -17,11 +18,11 @@ import androidx.core.content.ContextCompat;
 
 public class wifiDirectBrodcastReciever extends BroadcastReceiver{
 
-    private WifiP2pManager manager;
-    private WifiP2pManager.Channel channel;
-    private MainActivity activity;
+    private final WifiP2pManager manager;
+    private final Channel channel;
+    private final MainActivity activity;
 
-    public wifiDirectBrodcastReciever(WifiP2pManager manager, WifiP2pManager.Channel channel, MainActivity activity) {
+    public wifiDirectBrodcastReciever(WifiP2pManager manager, Channel channel, MainActivity activity) {
         this.manager = manager;
         this.channel = channel;
         this.activity = activity;
@@ -31,10 +32,10 @@ public class wifiDirectBrodcastReciever extends BroadcastReceiver{
     public void onReceive(Context context, Intent intent) {
 
         String action = intent.getAction();
-        if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
+        if (WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
             //CHECK TO SEE IF WIFI IS ENABLED AND NOTIFY APPROPRIATE ACTIVITY
 
-        } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
+        } else if (WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
 
             if (manager != null) {
 
@@ -47,15 +48,15 @@ public class wifiDirectBrodcastReciever extends BroadcastReceiver{
             }
             //CALL Wifip2pmanager requestPeers() to get a list of current peers
         }
-        else if(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action))
+        else if(WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action))
         {
 
             if(manager!=null)
             {
-                NetworkInfo networkInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+                NetworkInfo networkInfo = intent.getParcelableExtra(EXTRA_NETWORK_INFO);
                 if(networkInfo.isConnected())
                 {
-                    manager.requestConnectionInfo(channel,activity.connectionInfoListener);
+                    manager.requestConnectionInfo(channel, activity.connectionInfoListener);
                 }
                 else
                 {

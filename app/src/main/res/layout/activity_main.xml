@@ -63,7 +63,7 @@
             android:ems="10"
             android:id="@+id/editTextTypeMsg"
             android:inputType="textPersonName"
-            android:text="Name"
+            android:hint="Name"
             app:layout_constraintBaseline_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/sendButton"
             app:layout_constraintStart_toStartOf="parent"

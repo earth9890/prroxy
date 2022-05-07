@@ -1,6 +1,7 @@
 package com.example.prroxy;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.Manifest.permission.CHANGE_WIFI_STATE;
 
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -24,6 +25,8 @@ import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.Adapter;
@@ -34,10 +37,21 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
     TextView connectionStatus, messageTextView;
@@ -57,6 +71,12 @@ public class MainActivity extends AppCompatActivity {
     List<WifiP2pDevice> peers = new ArrayList<WifiP2pDevice>();
     String[] deviceNameArray;
     WifiP2pDevice[] deviceArray;
+    Socket socket;
+    ServerClass serverClass;
+    ClientClass clientClass;
+    boolean isHost;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +86,27 @@ public class MainActivity extends AppCompatActivity {
         initializeWork();
         exqListener();
     }
+
+    WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
+        @Override
+        public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
+            final InetAddress groupOwnerAddress = wifiP2pInfo.groupOwnerAddress;
+            if(wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner)
+            {
+                connectionStatus.setText(" Host ");
+                isHost = true;
+                serverClass = new ServerClass();
+                serverClass.start();
+            }
+            else if(wifiP2pInfo.groupFormed)
+            {
+                connectionStatus.setText(" Client ");
+                isHost = false;
+                clientClass = new ClientClass(groupOwnerAddress);
+                clientClass.start();
+            }
+        }
+    };
 
     private void initializeWork() {
         connectionStatus = findViewById(R.id.connection_status);
@@ -86,6 +127,9 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
+
+
+
 
     }
 
@@ -109,7 +153,13 @@ public class MainActivity extends AppCompatActivity {
                 listView.setAdapter(adapter);
 
                 if (peers.size() == 0) {
-                    connectionStatus.setText("No Device Found");
+                    try {
+                        connectionStatus.setText("No Device Found");
+                    }catch (Exception e)
+                    {
+                        Toast.makeText(getApplicationContext(),e.getMessage(),Toast.LENGTH_LONG).show();
+                    }
+
                     return;
                 }
 
@@ -196,36 +246,43 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        discoverButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        discoverButton.setOnClickListener(view -> {
 
-                if (ActivityCompat.checkSelfPermission(getApplicationContext(), ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    // TODO: Consider calling
-                    //    ActivityCompat#requestPermissions
-                    // here to request the missing permissions, and then overriding
-                    // public void onRequestPermissionsResult(int requestCode, String[] permissions,int[] grantResults)
-                    // to handle the case where the user grants the permission. See the documentation
-                    // for ActivityCompat#requestPermissions for more details.
-                    ActivityCompat.requestPermissions(MainActivity.this,
-                            new String[]{ACCESS_FINE_LOCATION}, 1);
-                    return;
-                }
-                manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        connectionStatus.setText("Discovery Started");
-                    }
-
-
-                    @Override
-                    public void onFailure(int i) {
-                        connectionStatus.setText("Discovery not Started");
-                    }
-                });
-
-
+            if (ActivityCompat.checkSelfPermission(getApplicationContext(), ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                // public void onRequestPermissionsResult(int requestCode, String[] permissions,int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                ActivityCompat.requestPermissions(MainActivity.this,
+                        new String[]{ACCESS_FINE_LOCATION}, 1);
+                return;
             }
+            manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    try {
+                        connectionStatus.setText("No Device Found");
+                    }catch (Exception e)
+                    {
+                        Toast.makeText(getApplicationContext(),e.getMessage(),Toast.LENGTH_LONG).show();
+                    }
+                }
+
+
+                @Override
+                public void onFailure(int i) {
+                    try {
+                        connectionStatus.setText("No Device Found");
+                    }catch (Exception e)
+                    {
+                        Toast.makeText(getApplicationContext(),e.getMessage(),Toast.LENGTH_LONG).show();
+                    }
+                }
+            });
+
+
         });
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -262,20 +319,28 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
+        sendButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
-                final InetAddress groupOwnerAddress = wifiP2pInfo.groupOwnerAddress;
-                if(wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner)
-                {
-                    connectionStatus.setText(" Host ");
-                }
-                else if(wifiP2pInfo.groupFormed)
-                {
-                    connectionStatus.setText(" Cliet ");
-                }
+            public void onClick(View view) {
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+                String msg= typing.getText().toString();
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(msg !=null && isHost)
+                        {
+                            serverClass.write(msg.getBytes());
+
+                        }else if(msg != null && !isHost)
+                        {
+                            clientClass.write(msg.getBytes());
+                        }
+                    }
+                });
             }
-        };
+        });
+
+
 
 
     }
@@ -286,10 +351,171 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(receiver, intentFilter);
 
     }
+
+    public  class ServerClass extends  Thread
+    {
+        ServerSocket serverSocket;
+        private InputStream inputStream;
+        private OutputStream outputStream;
+
+        public void write(byte[] bytes)
+        {
+            try {
+                outputStream.write(bytes);
+            } catch(IOException e)
+            {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void run()
+        {
+
+          try {
+              serverSocket = new ServerSocket(8888);
+              socket =serverSocket.accept();
+              inputStream =socket.getInputStream();
+              outputStream = socket.getOutputStream();
+          }catch (IOException e)
+          {
+              e.printStackTrace();
+          }
+          ExecutorService executorService = Executors.newSingleThreadExecutor();
+          Handler handler = new Handler(Looper.getMainLooper());
+
+          executorService.execute(new Runnable() {
+              @Override
+              public void run() {
+                  byte[] buffer = new byte[1024];
+                  int bytes;
+
+
+                  while(socket!=null)
+                  {
+                      try {
+                          bytes = inputStream.read(buffer);
+                      } catch (IOException e)
+                      {
+                          e.printStackTrace();
+                      }
+                    ExecutorService executor = Executors.newSingleThreadExecutor();
+                      Handler handler = new Handler(Looper.getMainLooper());
+
+                      executor.execute(new Runnable() {
+                          @Override
+                          public void run() {
+                              byte[] buffer = new byte[1024];
+                              int bytes;
+
+                              while(socket!=null)
+                              {
+                                  try {
+                                      bytes = inputStream.read(buffer);
+                                      if(bytes>0)
+                                      {
+                                          int finalBytes = bytes;
+                                          handler.post(new Runnable() {
+                                              @Override
+                                              public void run() {
+                                                  String tempMSG = new String(buffer,0, finalBytes);
+                                                  messageTextView.setText(tempMSG);
+                                              }
+                                          });
+                                      }
+                                  }
+                                  catch(IOException e)
+                                  {
+                                      e.printStackTrace();
+                                  }
+                              }
+                          }
+                      });
+                  }
+              }
+          });
+        }
+    }
     @Override
     protected void onPause () {
         super.onPause();
         unregisterReceiver(receiver);
 
+    }
+
+    public class ClientClass extends Thread
+    {
+        String hostAdd;
+        private InputStream inputStream;
+        private OutputStream outputStream;
+
+        public ClientClass(InetAddress hostAddress)
+        {
+            hostAdd = hostAddress.getHostAddress();
+            socket = new Socket();
+
+
+        }
+
+        public void write(byte[] bytes)
+        {
+            try {
+                outputStream.write(bytes);
+            } catch(IOException e)
+            {
+                e.printStackTrace();
+            }
+        }
+
+
+        @Override
+        public void run() {
+            try {
+                socket.connect(new InetSocketAddress(hostAdd,8888),500);
+                inputStream = socket.getInputStream();
+                outputStream = socket.getOutputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            Handler handler = new Handler(Looper.getMainLooper());
+
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+
+                    byte [] buffer = new  byte[1024];
+                    int bytes;
+
+                     while(socket !=null)
+                    {
+                        try {
+                            bytes = inputStream.read(buffer);
+                            if(bytes>0)
+                            {
+                                int finalBytes = bytes;
+                                handler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        String tempMSG = new String(buffer,0,finalBytes);
+                                        messageTextView.setText(tempMSG);
+                                    }
+                                });
+                            }
+
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+
+                    }
+
+                }
+            });
+            {
+
+            }
+        }
     }
 }
